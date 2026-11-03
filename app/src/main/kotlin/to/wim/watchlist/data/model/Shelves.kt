@@ -80,11 +80,40 @@ object Shelves {
     /**
      * Whether the "continue from the latest episode" setting needs this show's episode list:
      * a show being watched that SIMKL's data would put in Up next (its counts include skipped
-     * episodes, so they can't tell), or whose next episode lies before the latest watched one.
+     * episodes, so they can't tell), whose next episode lies before the latest watched one, or with
+     * a newly aired episode in the calendar ([aired], see [calendarNext]).
      */
-    fun needsLatestLookup(item: LibraryItem): Boolean {
+    fun needsLatestLookup(
+        item: LibraryItem,
+        aired: NextEpisode? = null,
+    ): Boolean {
         if (item.status != ListStatus.Watching || !item.type.isEpisodic || latestWatched(item) == null) return false
-        return hasGap(item) || hasAvailableEpisode(item)
+        return hasGap(item) || hasAvailableEpisode(item) || aired != null
+    }
+
+    /**
+     * The first episode of [item] in SIMKL's calendar ([calendar] may hold entries of any show) that
+     * has aired and is not watched; with [fromLatest] only one after the latest watched episode.
+     * SIMKL's synced counts and next episode only change when something in the user's account
+     * changes, so without this a newly aired episode would not reach Up next until then.
+     */
+    fun calendarNext(
+        item: LibraryItem,
+        calendar: List<CalendarEntry>,
+        now: Instant,
+        fromLatest: Boolean,
+    ): NextEpisode? {
+        if (item.status != ListStatus.Watching || !item.type.isEpisodic) return null
+        val after = if (fromLatest) latestWatched(item)?.let { order(it) } ?: 0 else 0
+        return calendar
+            .filter { it.type == item.type && it.simklId == item.ids.simkl && !it.date.isAfter(now) }
+            .mapNotNull { entry -> entry.episode?.let { entry to it } }
+            .filter { (_, ref) ->
+                (ref.season ?: 1) > 0 &&
+                    order(ref) > after &&
+                    !item.isWatched(if (item.type == MediaType.Anime) null else ref.season, ref.episode)
+            }.minByOrNull { (_, ref) -> order(ref) }
+            ?.let { (entry, ref) -> NextEpisode(ref, null, entry.date.toString()) }
     }
 
     /**
@@ -132,28 +161,33 @@ object Shelves {
 
     /**
      * The next episode to watch: SIMKL's (the first unwatched one), or with [fromLatest] the one
-     * after the latest watched episode once [latest] is known for a show with a gap.
+     * after the latest watched episode once [latest] is known for a show with a gap. [aired] (see
+     * [calendarNext]) fills in when those don't know the newly aired episode yet.
      */
     fun nextEpisode(
         item: LibraryItem,
         fromLatest: Boolean,
         latest: LatestNext?,
+        aired: NextEpisode? = null,
     ): NextEpisode? {
-        if (!fromLatest || item.status != ListStatus.Watching) return item.nextToWatch
-        val valid = validLatest(item, latest) ?: return item.nextToWatch
-        return valid.next
+        if (!fromLatest || item.status != ListStatus.Watching) return item.nextToWatch ?: aired
+        val valid = validLatest(item, latest) ?: return item.nextToWatch ?: aired
+        return valid.next ?: aired
     }
 
     /**
      * True when a show the user is watching has an episode they can watch right now: an aired,
-     * unwatched episode. Uses the next episode's air date when SIMKL sends one, else the counts.
+     * unwatched episode. A newly aired one from the calendar ([aired], see [calendarNext]) counts
+     * first; then the next episode's air date when SIMKL sends one, else the counts.
      */
     fun hasAvailableEpisode(
         item: LibraryItem,
         now: Instant = Instant.now(),
         fromLatest: Boolean = false,
         latest: LatestNext? = null,
+        aired: NextEpisode? = null,
     ): Boolean {
+        if (aired != null && item.status == ListStatus.Watching) return true
         if (fromLatest && item.status == ListStatus.Watching) {
             // Only aired episodes after the latest watched one count (see latestNextFrom).
             validLatest(item, latest)?.let { return it.next != null }
@@ -169,9 +203,10 @@ object Shelves {
         now: Instant = Instant.now(),
         fromLatest: Boolean = false,
         latest: LatestNext? = null,
+        aired: NextEpisode? = null,
     ): Shelf =
         when (item.status) {
-            ListStatus.Watching -> if (hasAvailableEpisode(item, now, fromLatest, latest)) Shelf.UpNext else Shelf.Watched
+            ListStatus.Watching -> if (hasAvailableEpisode(item, now, fromLatest, latest, aired)) Shelf.UpNext else Shelf.Watched
             ListStatus.PlanToWatch -> Shelf.PlanToWatch
             ListStatus.OnHold -> Shelf.OnHold
             ListStatus.Completed -> Shelf.Watched

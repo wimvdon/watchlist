@@ -334,7 +334,7 @@ fun DetailScreen(
                         type = route.type,
                         title = title,
                         item = item,
-                        next = item?.let { Shelves.nextEpisode(it, settings.continueFromLatest, library.latestNext[it.key]) },
+                        next = item?.let { Shelves.nextEpisode(it, settings.continueFromLatest, library.latestNext[it.key], library.airedNext(it, settings.continueFromLatest)) },
                         playback = playback,
                         onPlaybackWatched = { confirmPlayback = it },
                         onMovieWatched = { run(resources.getString(R.string.detail_error_mark_watched)) { app.library.markMovieWatched(ids, title, poster, year) } },

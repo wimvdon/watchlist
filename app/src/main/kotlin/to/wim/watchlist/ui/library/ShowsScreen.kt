@@ -128,7 +128,7 @@ fun ShowsScreen(
         remember(state, type, fromLatest, options.version) {
             val now = Instant.now()
             state.items.filter { it.type == type }
-                .groupBy { Shelves.shelfOf(it, now, fromLatest, state.latestNext[it.key]) }
+                .groupBy { Shelves.shelfOf(it, now, fromLatest, state.latestNext[it.key], state.airedNext(it, fromLatest, now)) }
                 .mapValues { (shelf, v) ->
                     val tab = shelves.indexOf(shelf)
                     val airingOf = { item: LibraryItem -> Shelves.airingOf(item, state.showInfo[item.key], state.nextAirDate(item)) }
@@ -256,7 +256,7 @@ private fun UpNextList(
     ) {
         items(items, key = { it.key }) { item ->
             val playback = state.playbackFor(item.type, item.ids.simkl)?.takeIf { it.episode != null }
-            val next = Shelves.nextEpisode(item, fromLatest, state.latestNext[item.key])
+            val next = Shelves.nextEpisode(item, fromLatest, state.latestNext[item.key], state.airedNext(item, fromLatest))
             val left = item.airedUnwatched
             ShowRow(
                 item = item,

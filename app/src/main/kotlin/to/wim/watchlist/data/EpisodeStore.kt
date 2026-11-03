@@ -77,7 +77,8 @@ class EpisodeStore(
             map.values.removeAll { now - it.fetchedAt > TimeUnit.DAYS.toMillis(30) }
             saveLocked(map)
         }
-        return fresh
+        // SIMKL's "aired" flag can lag behind an air date that has passed.
+        return SyncRules.airedBy(fresh, Instant.ofEpochMilli(now))
     }
 
     /** Drops the kept lists of these "Type:simklId" keys, so they are downloaded the next time they are needed. */
