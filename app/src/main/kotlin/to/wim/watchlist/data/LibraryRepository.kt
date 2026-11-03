@@ -110,6 +110,15 @@ data class LibraryState(
         simklId: Long,
     ): Playback? = playback.firstOrNull { it.type == type && it.simklId == simklId }
 
+    private val calendarByKey by lazy { calendar.values.flatten().groupBy { "${it.type.name}:${it.simklId}" } }
+
+    /** A newly aired, unwatched episode of [item] from the calendar (see [Shelves.calendarNext]). */
+    fun airedNext(
+        item: LibraryItem,
+        fromLatest: Boolean,
+        now: Instant = Instant.now(),
+    ): NextEpisode? = Shelves.calendarNext(item, calendarByKey[item.key].orEmpty(), now, fromLatest)
+
     fun nextAirDate(item: LibraryItem): Instant? {
         nextAirDates[item.key]?.let { return it }
         val date = to.wim.watchlist.data.model.Dates.parse(item.nextToWatch?.date)
@@ -224,9 +233,12 @@ class LibraryRepository(
             }
         _state.update { it.copy(syncing = false, error = error) }
         if (error == null) {
-            scope.launch { runCatching { refreshCalendar() } }
+            scope.launch {
+                runCatching { refreshCalendar() }
+                // After the calendar, so shows with a newly aired episode are looked up too.
+                runCatching { refreshLatestNext() }
+            }
             scope.launch { runCatching { refreshCommunityRatings() } }
-            scope.launch { runCatching { refreshLatestNext() } }
         }
         return error
     }
@@ -396,16 +408,23 @@ class LibraryRepository(
     /**
      * For the "continue from the latest episode" setting: finds the first aired episode after the
      * latest watched one, from the episode lists of shows that would otherwise be in Up next.
-     * A few at a time; results are kept until the watched count changes or they are 6 hours old.
+     * A few at a time; results are kept until the watched count changes or they are 6 hours old,
+     * or the calendar shows an episode aired that the kept result doesn't have.
      */
     suspend fun refreshLatestNext() {
         if (!settings.current().continueFromLatest) return
         val now = System.currentTimeMillis()
+        val state = _state.value
         val wanted =
             snapshot.items.filter { item ->
                 val known = snapshot.latestNext[item.key]
-                Shelves.needsLatestLookup(item) &&
-                    (known?.watchedCount != item.watchedEpisodes || now - known.computedAt > TimeUnit.HOURS.toMillis(6))
+                val aired = state.airedNext(item, fromLatest = true, now = Instant.ofEpochMilli(now))
+                Shelves.needsLatestLookup(item, aired) &&
+                    (
+                        known?.watchedCount != item.watchedEpisodes ||
+                            now - known.computedAt > TimeUnit.HOURS.toMillis(6) ||
+                            (aired != null && known.next == null)
+                    )
             }
         if (wanted.isEmpty()) return
         val found = lookupLatestNext(wanted)

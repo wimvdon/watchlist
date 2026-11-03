@@ -411,4 +411,75 @@ class ParsersTest {
         val updated = known + ("Tv:1" to to.wim.watchlist.data.model.LatestNext(3, null))
         assertTrue(Shelves.changedLatestLookups(before, after, updated).isEmpty())
     }
+
+    @Test
+    fun newlyAiredCalendarEpisodeIsUpNext() {
+        // "Below Deck": S13E01-03 watched and caught up at the last sync, which was before S13E04
+        // aired. SIMKL's counts still say nothing is waiting; the calendar has E04 at 02:00 CET.
+        val item =
+            to.wim.watchlist.data.model.LibraryItem(
+                type = MediaType.Tv,
+                ids = to.wim.watchlist.data.model.MediaIds(42296),
+                title = "Below Deck",
+                status = ListStatus.Watching,
+                watchedEpisodes = 3,
+                totalEpisodes = 4,
+                notAiredEpisodes = 1,
+                watched = listOf(to.wim.watchlist.data.model.WatchedSeason(13, listOf(1, 2, 3))),
+            )
+        val airedAt = Instant.parse("2026-11-03T01:00:00Z")
+        fun entry(
+            ref: EpisodeRef,
+            date: Instant = airedAt,
+            simklId: Long = 42296,
+        ) = to.wim.watchlist.data.model.CalendarEntry(MediaType.Tv, simklId, "Below Deck", null, date, ref)
+        val calendar =
+            listOf(
+                entry(EpisodeRef(13, 3), airedAt.minusSeconds(7 * 86_400)),
+                entry(EpisodeRef(13, 4)),
+                entry(EpisodeRef(13, 5), airedAt.plusSeconds(7 * 86_400)),
+                entry(EpisodeRef(0, 1)),
+                entry(EpisodeRef(2, 1), simklId = 7),
+            )
+        val before = airedAt.minusSeconds(60)
+        val after = airedAt.plusSeconds(60)
+        assertNull(Shelves.calendarNext(item, calendar, before, fromLatest = true))
+        assertEquals(Shelf.Watched, Shelves.shelfOf(item, after))
+        for (fromLatest in listOf(true, false)) {
+            val aired = Shelves.calendarNext(item, calendar, after, fromLatest)
+            assertEquals(EpisodeRef(13, 4), aired?.ref)
+            assertEquals(Shelf.UpNext, Shelves.shelfOf(item, after, fromLatest, null, aired))
+            assertEquals(EpisodeRef(13, 4), Shelves.nextEpisode(item, fromLatest, null, aired)?.ref)
+        }
+        // A "next after latest" worked out before E04 aired doesn't hide it, and is looked up again.
+        val stale = to.wim.watchlist.data.model.LatestNext(3, null)
+        val aired = Shelves.calendarNext(item, calendar, after, fromLatest = true)
+        assertEquals(Shelf.UpNext, Shelves.shelfOf(item, after, true, stale, aired))
+        assertEquals(EpisodeRef(13, 4), Shelves.nextEpisode(item, true, stale, aired)?.ref)
+        assertFalse(Shelves.needsLatestLookup(item))
+        assertTrue(Shelves.needsLatestLookup(item, aired))
+        // Watched: gone from Up next.
+        val watched = item.copy(watchedEpisodes = 4, watched = listOf(to.wim.watchlist.data.model.WatchedSeason(13, listOf(1, 2, 3, 4))))
+        assertNull(Shelves.calendarNext(watched, calendar, after, fromLatest = true))
+        // Only shows being watched.
+        assertNull(Shelves.calendarNext(item.copy(status = ListStatus.OnHold), calendar, after, fromLatest = true))
+    }
+
+    @Test
+    fun calendarNextSkipsEpisodesBeforeTheLatestWatched() {
+        // Seasons 1-12 skipped: an aired, unwatched S01 rerun in the calendar counts only with the setting off.
+        val item =
+            to.wim.watchlist.data.model.LibraryItem(
+                type = MediaType.Tv,
+                ids = to.wim.watchlist.data.model.MediaIds(1),
+                title = "Show",
+                status = ListStatus.Watching,
+                watchedEpisodes = 1,
+                watched = listOf(to.wim.watchlist.data.model.WatchedSeason(13, listOf(1))),
+            )
+        val now = Instant.parse("2026-11-03T12:00:00Z")
+        val calendar = listOf(to.wim.watchlist.data.model.CalendarEntry(MediaType.Tv, 1, "Show", null, now.minusSeconds(3600), EpisodeRef(1, 2)))
+        assertNull(Shelves.calendarNext(item, calendar, now, fromLatest = true))
+        assertEquals(EpisodeRef(1, 2), Shelves.calendarNext(item, calendar, now, fromLatest = false)?.ref)
+    }
 }
