@@ -108,8 +108,10 @@ android {
             buildConfigField("boolean", "REQUIRE_SUBSCRIPTION", "false")
         }
         release {
-            // Without an active subscription (or its free trial) the app shows the subscription screen.
-            buildConfigField("boolean", "REQUIRE_SUBSCRIPTION", "true")
+            // Off until the subscription is set up in the Play Console (docs/publishing.md, step 7):
+            // when on, the app shows the subscription screen without an active subscription (or its
+            // free trial), and nobody can get past it while Play has no product to sell.
+            buildConfigField("boolean", "REQUIRE_SUBSCRIPTION", "false")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
