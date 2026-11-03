@@ -121,6 +121,12 @@ offers whichever offer Google Play returns for that user (the free-trial offer i
 it, else the plain yearly plan). The products can only be activated after a version that uses
 Google Play Billing has been uploaded to a test track.
 
+**Switch it on:** release builds don't ask for the subscription yet (`REQUIRE_SUBSCRIPTION` is
+`false` for `release` in `app/build.gradle.kts`), because without an active product in Play
+nobody can get past the subscription screen. The Billing Library is still in the app, so the
+products can be activated. Once they are active, ask for it to be set to `true` in a pull request
+and test that build from the internal test track before releasing it.
+
 To test: install the app from the internal test track (not a debug build or a GitHub APK: those
 can't buy from Google Play), signed in with a license-test account. Test purchases renew fast
 (a year lasts 30 minutes, a 14-day trial a few minutes) and cost nothing.

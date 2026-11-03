@@ -16,6 +16,8 @@ Nobody needs a SIMKL developer account. If the browser shows the app chooser (wh
 
 ## Subscription
 
+*Not switched on yet: until the subscription is set up in Google Play, the app opens without one and this screen doesn't appear.*
+
 After signing in, Watchlist needs a subscription, sold through Google Play: **Start free trial** gives 14 days free, then €3.99 a year (Google Play shows the price in your currency). Google Play charges you when the trial ends unless you cancel before then; someone who already had the trial sees **Subscribe** instead. Without an active subscription the app only shows this screen.
 
 - **Check again**: asks Google Play again, for example after subscribing on another phone with the same Google account.

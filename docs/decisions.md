@@ -11,6 +11,15 @@ compile the app's code and resources. CI still builds the debug and release APKs
 problem still turns the pull request red. Rejected: no local checks at all (every test or lint
 failure would then cost a CI round trip).
 
+## 2026-11-03: Subscription switched off in release builds for now
+
+The version with the subscription locked everyone out, the owner included: the subscription isn't set
+up in the Play Console yet, so Google Play has nothing to sell and the app never opens. Release
+builds now have `REQUIRE_SUBSCRIPTION = false`, like debug builds; all subscription code stays, so
+switching it on is a one-line change once the products are active (`docs/publishing.md`, step 7).
+Rejected: commenting the code out or removing it (more changes now and again later, and the
+Billing Library must stay in the app for Play to activate the products).
+
 ## 2026-10-30: A yearly subscription through Google Play Billing
 
 The owner asked for a 14-day free trial and then €3.99 a year, with the app fully locked
