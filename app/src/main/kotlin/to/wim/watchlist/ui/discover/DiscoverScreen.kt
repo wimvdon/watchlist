@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Casino
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -29,6 +31,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -42,6 +45,7 @@ import to.wim.watchlist.R
 import to.wim.watchlist.data.CatalogRepository
 import to.wim.watchlist.data.DiscoverSection
 import to.wim.watchlist.data.NavTab
+import to.wim.watchlist.data.SectionResult
 import to.wim.watchlist.data.model.MediaSummary
 import to.wim.watchlist.data.model.MediaType
 import to.wim.watchlist.ui.LocalNavigator
@@ -52,6 +56,7 @@ import to.wim.watchlist.ui.library.SectionHeader
 import to.wim.watchlist.ui.library.bottomPadding
 import to.wim.watchlist.ui.main.MainTopBar
 import to.wim.watchlist.ui.theme.Motion
+import to.wim.watchlist.ui.theme.EmptyState
 import to.wim.watchlist.ui.components.label
 import kotlinx.coroutines.launch
 import to.wim.watchlist.ui.components.PosterRowSkeleton
@@ -71,6 +76,9 @@ fun DiscoverScreen(types: List<MediaType>) {
     val sections = remember(type) { CatalogRepository.sections(type) }
     var refresh by remember { mutableIntStateOf(0) }
     var refreshing by remember { mutableStateOf(false) }
+    // Whether each row's load failed; all failed means offline or SIMKL down, said once for the screen.
+    val failedRows = remember(type, refresh) { mutableStateMapOf<String, Boolean>() }
+    val allFailed = SectionResult.allFailed(failedRows.values, sections.size)
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 
     Scaffold(
@@ -109,9 +117,15 @@ fun DiscoverScreen(types: List<MediaType>) {
             },
             modifier = Modifier.fillMaxSize().padding(top = padding.calculateTopPadding()),
         ) {
+            if (allFailed) {
+                EmptyState(Icons.Rounded.ErrorOutline, stringResource(R.string.screens_discover_failed)) {
+                    Button(onClick = { refresh++ }) { Text(stringResource(R.string.detail_try_again)) }
+                }
+                return@PullToRefreshBox
+            }
             LazyColumn(contentPadding = PaddingValues(bottom = bottomPadding()), modifier = Modifier.fillMaxSize()) {
                 sections.forEach { section ->
-                    item(key = "${section.id}:$refresh") { SectionRow(section, refresh) }
+                    item(key = "${section.id}:$refresh") { SectionRow(section, refresh) { failed -> failedRows[section.id] = failed } }
                 }
                 item(key = "attribution") {
                     androidx.compose.material3.TextButton(
@@ -129,12 +143,17 @@ fun DiscoverScreen(types: List<MediaType>) {
 private fun SectionRow(
     section: DiscoverSection,
     refresh: Int,
+    onResult: (failed: Boolean) -> Unit,
 ) {
     val app = rememberApp()
     val navigator = LocalNavigator.current
     val library by app.library.state.collectAsState()
     var items by remember { mutableStateOf<List<MediaSummary>?>(null) }
-    LaunchedEffect(section.id, refresh) { items = app.catalog.section(section, refresh = refresh > 0) }
+    LaunchedEffect(section.id, refresh) {
+        val result = app.catalog.section(section, refresh = refresh > 0)
+        items = result.items
+        onResult(result.failed)
+    }
     // Fade through from the placeholders to the posters; the row's height change animates with it.
     AnimatedContent(
         targetState = items,

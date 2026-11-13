@@ -12,6 +12,8 @@
     <string name="screens_search_placeholder">Zoeken op SIMKL</string>
     <string name="screens_search_all">Alle</string>
     <string name="screens_search_no_results">Geen resultaten voor “%1$s”</string>
+    <string name="screens_search_failed">Zoeken in SIMKL lukte niet</string>
+    <string name="screens_discover_failed">Ontdekken kon niet worden geladen</string>
     <string name="screens_search_empty_title">Zoek series, anime en films</string>
     <string name="screens_search_empty_title_tv_anime">Zoek series en anime</string>
     <string name="screens_search_empty_title_tv_movies">Zoek series en films</string>
