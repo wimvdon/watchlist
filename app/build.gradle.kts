@@ -6,21 +6,17 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// ---------------------------------------------------------------------------
-// App identity: the ONE place to change the package / application ID. It changed once, from
+// App identity: the only place to change the package / application ID. It changed once, from
 // the old io.github ID, before the Google Play launch (docs/decisions.md). It must
 // never change again (phones and Google Play would treat it as a different app).
-// ---------------------------------------------------------------------------
 val appId = "to.wim.watchlist"
 
-// ---------------------------------------------------------------------------
 // Versioning
 //  - Release builds: the release workflow passes -PappVersionName=X.Y.Z and
 //    -PappVersionCode=N (N = major*10000 + minor*100 + patch).
 //  - Every other build: version comes from `git describe --tags --long`, e.g.
 //    1.2.0-3-gabc1234, so a dev build never looks like a release.
 //    Falls back to 0.0.0-dev when there are no tags or no git.
-// ---------------------------------------------------------------------------
 val releaseVersionName: String? = providers.gradleProperty("appVersionName").orNull
 val releaseVersionCode: String? = providers.gradleProperty("appVersionCode").orNull
 
@@ -61,10 +57,8 @@ val appVersion: AppVersion =
         AppVersion(gitDescribeVersion(), 1)
     }
 
-// ---------------------------------------------------------------------------
 // Release signing: only when keystore.properties exists. The release workflow
 // writes it at build time and deletes it afterwards. Never commit it.
-// ---------------------------------------------------------------------------
 val keystorePropertiesFile = rootProject.file("keystore.properties")
 val keystoreProperties =
     Properties().apply {

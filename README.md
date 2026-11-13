@@ -1,16 +1,16 @@
 # Watchlist for Simkl
 
-## 📚 Documentation
+## Documentation
 | | |
 |---|---|
-| [⚙️ Architecture](docs/architecture.md) | System design, components and flow |
-| [📁 Structure](docs/structure.md) | Project organization and responsibilities |
-| [🚀 Installation](docs/installation.md) | Requirements and steps to run the project |
-| [🧠 Technical decisions](docs/decisions.md) | Trade-offs and design justifications |
-| [📖 Usage guide](docs/usage.md) | Signing in, shelves, Discover, Calendar, settings |
-| [🔌 API](docs/api.md) | SIMKL endpoints used, sign-in flow, deep links |
-| [🧪 Testing](docs/testing.md) | How to run tests and what they cover |
-| [🛒 Publishing](docs/publishing.md) | Google Play: account, store texts, app content, subscription |
+| [Architecture](docs/architecture.md) | System design, components and flow |
+| [Structure](docs/structure.md) | Project organization and responsibilities |
+| [Installation](docs/installation.md) | Requirements and steps to run the project |
+| [Technical decisions](docs/decisions.md) | Trade-offs and design justifications |
+| [Usage guide](docs/usage.md) | Signing in, shelves, Discover, Calendar, settings |
+| [API](docs/api.md) | SIMKL endpoints used, sign-in flow, deep links |
+| [Testing](docs/testing.md) | How to run tests and what they cover |
+| [Publishing](docs/publishing.md) | Google Play: account, store texts, app content, subscription |
 
 ---
 
