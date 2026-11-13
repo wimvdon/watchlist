@@ -12,6 +12,8 @@
     <string name="screens_search_placeholder">Buscar en SIMKL</string>
     <string name="screens_search_all">Todo</string>
     <string name="screens_search_no_results">No hay resultados para «%1$s»</string>
+    <string name="screens_search_failed">No se pudo buscar en SIMKL</string>
+    <string name="screens_discover_failed">No se pudo cargar Descubrir</string>
     <string name="screens_search_empty_title">Encuentra series, anime y películas</string>
     <string name="screens_search_empty_title_tv_anime">Encuentra series y anime</string>
     <string name="screens_search_empty_title_tv_movies">Encuentra series y películas</string>

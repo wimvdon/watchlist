@@ -25,8 +25,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.SearchOff
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -59,6 +61,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import to.wim.watchlist.data.SearchResults
 import to.wim.watchlist.R
 import to.wim.watchlist.data.model.MediaSummary
 import to.wim.watchlist.data.model.MediaType
@@ -108,16 +111,19 @@ fun SearchScreen(
     var results by remember { mutableStateOf<Map<MediaType, List<MediaSummary>>>(emptyMap()) }
     var people by remember { mutableStateOf<List<PersonResult>>(emptyList()) }
     var loading by remember { mutableStateOf(false) }
+    var failed by remember { mutableStateOf(false) }
+    var retry by remember { mutableStateOf(0) }
     val focus = remember { FocusRequester() }
     val keyboard = LocalSoftwareKeyboardController.current
 
     LaunchedEffect(Unit) { if (query.isEmpty()) focus.requestFocus() }
-    LaunchedEffect(query, type, types, peopleOnly, key) {
+    LaunchedEffect(query, type, types, peopleOnly, key, retry) {
         val q = query.trim()
         if (q.length < 2) {
             results = emptyMap()
             people = emptyList()
             loading = false
+            failed = false
             return@LaunchedEffect
         }
         // Loading covers the debounce too, so "No results" doesn't flash before the search runs.
@@ -126,7 +132,9 @@ fun SearchScreen(
         coroutineScope {
             // People show under "All" and "People"; a failed TMDB search just shows none.
             val found = async { if (key != null && (type == null || peopleOnly)) runCatching { app.catalog.searchPeople(q, key) }.getOrDefault(emptyList()) else emptyList() }
-            results = if (peopleOnly) emptyMap() else app.catalog.search(q, type?.let { listOf(it) } ?: types)
+            val titles = if (peopleOnly) SearchResults.Empty else app.catalog.search(q, type?.let { listOf(it) } ?: types)
+            results = titles.byType
+            failed = titles.failed
             people = found.await()
         }
         loading = false
@@ -191,7 +199,11 @@ fun SearchScreen(
             modifier = Modifier.fillMaxSize(),
         ) { (shown, shownPeople) ->
             if (shown.isEmpty() && shownPeople.isEmpty()) {
-                if (query.trim().length >= 2 && !loading) {
+                if (query.trim().length >= 2 && !loading && failed) {
+                    EmptyState(Icons.Rounded.ErrorOutline, stringResource(R.string.screens_search_failed), Modifier.padding(padding)) {
+                        Button(onClick = { retry++ }) { Text(stringResource(R.string.detail_try_again)) }
+                    }
+                } else if (query.trim().length >= 2 && !loading) {
                     EmptyState(Icons.Rounded.SearchOff, stringResource(R.string.screens_search_no_results, query.trim()), Modifier.padding(padding))
                 } else {
                     EmptyState(Icons.Rounded.Search, stringResource(SearchSubject.of(types).titleRes()), Modifier.padding(padding), body = stringResource(R.string.screens_search_empty_body))

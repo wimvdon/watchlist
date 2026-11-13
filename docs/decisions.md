@@ -2,6 +2,19 @@
 
 Newest first. Add an entry for every notable choice: what was decided, why, and what was rejected.
 
+## 2026-11-13: Search and Discover say when SIMKL couldn't be reached
+
+From an antislop pass over the app's states. A failed SIMKL request was turned into an empty
+list, so offline the search said "No results for …" and Discover was a blank page.
+
+- **Search:** when every type's request failed, it shows "Couldn't search SIMKL" with Retry instead
+  of "No results". One type answering is enough to show results as before (`SearchResults`).
+- **Discover:** when every row's sources failed, one "Couldn't load Discover" with Retry replaces
+  the blank page. A row that loads, or answers with nothing, keeps the old behaviour: an empty row
+  is hidden (`SectionResult`).
+- **Kept:** a failed TMDB people search still shows no people, as before: it is an extra on top of
+  the SIMKL results.
+
 ## 2026-11-01: Claude Code sessions don't build the APK before pushing
 
 Sessions ran `./gradlew testDebugUnitTest lintDebug assembleDebug` before every push, and CI then

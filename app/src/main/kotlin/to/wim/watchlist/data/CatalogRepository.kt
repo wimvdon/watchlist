@@ -123,24 +123,29 @@ class CatalogRepository(
     suspend fun search(
         query: String,
         types: List<MediaType>,
-    ): Map<MediaType, List<MediaSummary>> =
+    ): SearchResults =
         coroutineScope {
-            types.map { type ->
-                async { type to runCatching { Parsers.summaries(api.search(type, query), type) }.getOrDefault(emptyList()) }
-            }.awaitAll().toMap()
+            SearchResults.of(
+                types.map { type ->
+                    async { type to runCatching { Parsers.summaries(api.search(type, query), type) } }
+                }.awaitAll(),
+            )
         }
 
-    /** First source of the section that returns anything; empty when none does. */
+    /** First source of the section that returns anything; empty when none does, [SectionResult.failed] when every source failed. */
     suspend fun section(
         section: DiscoverSection,
         refresh: Boolean = false,
-    ): List<MediaSummary> {
-        if (!refresh) lists[section.id]?.let { return it }
+    ): SectionResult {
+        if (!refresh) lists[section.id]?.let { return SectionResult(it, failed = false) }
+        var answered = false
         for ((path, params) in section.sources) {
-            val items = runCatching { Parsers.summaries(api.list(path, params), section.type) }.getOrDefault(emptyList())
-            if (items.isNotEmpty()) return items.also { lists[section.id] = it }
+            val result = runCatching { Parsers.summaries(api.list(path, params), section.type) }
+            if (result.isSuccess) answered = true
+            val items = result.getOrDefault(emptyList())
+            if (items.isNotEmpty()) return SectionResult(items, failed = false).also { lists[section.id] = items }
         }
-        return emptyList()
+        return SectionResult(emptyList(), failed = !answered)
     }
 
     /** A random title from SIMKL's random search (skips what the user watched), or null. */
